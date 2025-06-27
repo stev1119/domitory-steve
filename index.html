@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기숙사 관리 시스템</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --shadow-xl: 0 20px 25px rgba(0,0,0,0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .login-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: var(--shadow-xl);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .login-container h1 {
+            font-size: 2.5rem;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        .login-options {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .login-option {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 15px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .login-option:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+
+        .password-input-container {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .password-input-container.active {
+            display: block;
+        }
+
+        .password-input {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 1.1rem;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: none;
+        }
+
+        .app-container.active {
+            display: block;
+        }
+
+        .header {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: var(--shadow-xl);
+            position: relative;
+        }
+
+        .header h1 {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+
+        .status-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .status-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .status-card h3 {
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .status-card .count {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 5px;
+        }
+
+        .status-card input {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            padding: 8px 12px;
+            color: white;
+            text-align: center;
+            width: 80px;
+        }
+
+        .control-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .control-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            color: white;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: white;
+        }
+
+        .message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 1000;
+            color: white;
+        }
+
+        .message.success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .message.error {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .message.warning {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-screen" id="login-screen">
+        <div class="login-container">
+            <h1><i class="fas fa-building"></i> 기숙사 관리 시스템</h1>
+            <div class="login-options">
+                <div class="login-option" onclick="selectLoginType('report')">
+                    <h3><i class="fas fa-clipboard-list"></i> 인원보고</h3>
+                    <p>담당자가 인원 현황을 보고하는 화면</p>
+                </div>
+                <div class="login-option" onclick="selectLoginType('dashboard')">
+                    <h3><i class="fas fa-chart-bar"></i> 대시보드</h3>
+                    <p>전체 현황을 조회하고 분석하는 화면</p>
+                </div>
+            </div>
+            
+            <div class="password-input-container" id="password-container">
+                <input type="password" class="password-input" id="password-input" placeholder="비밀번호를 입력하세요">
+                <button class="btn btn-primary" onclick="login()">
+                    <i class="fas fa-sign-in-alt"></i> 로그인
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="app-container" id="app-container">
+        <div class="header">
+            <button class="logout-btn" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> 로그아웃
+            </button>
+            <h1><i class="fas fa-building"></i> 기숙사 관리 시스템</h1>
+            <p id="system-subtitle">실시간 인원 현황 관리 및 보고</p>
+        </div>
+
+        <div class="status-cards">
+            <div class="status-card">
+                <h3><i class="fas fa-users"></i> 현재원</h3>
+                <div class="count" id="current-count">0</div>
+                <input type="number" id="current-input" placeholder="0" min="0">
+            </div>
+            <div class="status-card">
+                <h3><i class="fas fa-bed"></i> 외박</h3>
+                <div class="count" id="absent-count">0</div>
+                <input type="number" id="absent-input" placeholder="0" min="0">
+            </div>
+            <div class="status-card">
+                <h3><i class="fas fa-user-plus"></i> 신규</h3>
+                <div class="count" id="new-count">0</div>
+                <input type="number" id="new-input" placeholder="0" min="0">
+            </div>
+            <div class="status-card">
+                <h3><i class="fas fa-sign-out-alt"></i> 퇴소</h3>
+                <div class="count" id="checkout-count">0</div>
+                <input type="number" id="checkout-input" placeholder="0" min="0">
+            </div>
+            <div class="status-card">
+                <h3><i class="fas fa-arrow-left"></i> 이동-</h3>
+                <div class="count" id="move-out-count">0</div>
+                <input type="number" id="move-out-input" placeholder="0" min="0">
+            </div>
+            <div class="status-card">
+                <h3><i class="fas fa-arrow-right"></i> 이동+</h3>
+                <div class="count" id="move-in-count">0</div>
+                <input type="number" id="move-in-input" placeholder="0" min="0">
+            </div>
+            <div class="status-card">
+                <h3><i class="fas fa-clock"></i> 등미</h3>
+                <div class="count" id="late-count">0</div>
+                <input type="number" id="late-input" placeholder="0" min="0">
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="control-row">
+                <div class="form-group">
+                    <label><i class="fas fa-user-tie"></i> 담당자</label>
+                    <select id="manager-select">
+                        <option value="">담당자 선택</option>
+                        <option value="이영운">이영운</option>
+                        <option value="김혜정">김혜정</option>
+                        <option value="이시우">이시우</option>
+                        <option value="고승완">고승완</option>
+                        <option value="남인달">남인달</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-building"></i> 동</label>
+                    <select id="building-select">
+                        <option value="">동 선택</option>
+                        <option value="A">A동 (남학생)</option>
+                        <option value="B">B동 (남학생)</option>
+                        <option value="C">C동 (남학생)</option>
+                        <option value="D">D동 (여학생)</option>
+                        <option value="E">E동 (여학생)</option>
+                        <option value="F">F동 (남학생)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-layer-group"></i> 층</label>
+                    <select id="floor-select">
+                        <option value="">층 선택</option>
+                        <option value="1">1층</option>
+                        <option value="2">2층</option>
+                        <option value="3">3층</option>
+                        <option value="4">4층</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <h3 style="color: white; margin-bottom: 20px;"><i class="fas fa-edit"></i> 수동 입력</h3>
+            <div class="control-row">
+                <div class="form-group">
+                    <label><i class="fas fa-door-open"></i> 기숙사 번호</label>
+                    <input type="text" id="manual-room" placeholder="예: A101, B203-2" />
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> 학생 이름</label>
+                    <input type="text" id="manual-name" placeholder="학생 이름" />
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-list"></i> 상태</label>
+                    <select id="manual-status">
+                        <option value="">상태 선택</option>
+                        <option value="정상">정상</option>
+                        <option value="외박">외박</option>
+                        <option value="신규">신규</option>
+                        <option value="퇴소">퇴소</option>
+                        <option value="이동-">이동-</option>
+                        <option value="이동+">이동+</option>
+                        <option value="등미">등미</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-comment"></i> 비고</label>
+                    <input type="text" id="manual-note" placeholder="비고 사항" />
+                </div>
+            </div>
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="btn btn-success" onclick="applyManualEntry()">
+                    <i class="fas fa-check"></i> 수동 입력 적용
+                </button>
+            </div>
+        </div>
+
+        <div style="text-align: center;">
+            <button class="btn btn-success" onclick="submitReport()">
+                <i class="fas fa-paper-plane"></i> 인원보고 제출
+            </button>
+            <button class="btn btn-warning" onclick="loadData()">
+                <i class="fas fa-sync-alt"></i> 데이터 새로고침
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentUserType = '';
+        let manualEntries = [];
+        
+        const passwords = { report: '7799', dashboard: '1119' };
+        
+        function selectLoginType(type) {
+            currentUserType = type;
+            document.getElementById('password-container').classList.add('active');
+        }
+
+        function login() {
+            const password = document.getElementById('password-input').value;
+            if (password === passwords[currentUserType]) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('app-container').classList.add('active');
+                showMessage('로그인 성공!', 'success');
+            } else {
+                showMessage('비밀번호가 올바르지 않습니다.', 'error');
+            }
+        }
+
+        function logout() {
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('app-container').classList.remove('active');
+            document.getElementById('password-container').classList.remove('active');
+            currentUserType = '';
+        }
+
+        function applyManualEntry() {
+            const room = document.getElementById('manual-room').value.trim();
+            const name = document.getElementById('manual-name').value.trim();
+            const status = document.getElementById('manual-status').value;
+            const note = document.getElementById('manual-note').value.trim();
+            
+            if (!room || !name || !status) {
+                showMessage('모든 필드를 입력해주세요.', 'warning');
+                return;
+            }
+            
+            manualEntries.push({ room, name, status, note, isManualEntry: true });
+            updateCounts();
+            
+            document.getElementById('manual-room').value = '';
+            document.getElementById('manual-name').value = '';
+            document.getElementById('manual-status').value = '';
+            document.getElementById('manual-note').value = '';
+            
+            showMessage('수동 입력이 적용되었습니다.', 'success');
+        }
+
+        function updateCounts() {
+            let counts = { current: 0, absent: 0, new: 0, checkout: 0, moveOut: 0, moveIn: 0, late: 0 };
+            
+            manualEntries.forEach(entry => {
+                switch(entry.status) {
+                    case '외박': counts.absent++; break;
+                    case '신규': counts.new++; counts.current++; break;
+                    case '퇴소': counts.checkout++; break;
+                    case '이동-': counts.moveOut++; break;
+                    case '이동+': counts.moveIn++; counts.current++; break;
+                    case '등미': counts.late++; break;
+                    case '정상': counts.current++; break;
+                }
+            });
+            
+            document.getElementById('current-count').textContent = counts.current;
+            document.getElementById('absent-count').textContent = counts.absent;
+            document.getElementById('new-count').textContent = counts.new;
+            document.getElementById('checkout-count').textContent = counts.checkout;
+            document.getElementById('move-out-count').textContent = counts.moveOut;
+            document.getElementById('move-in-count').textContent = counts.moveIn;
+            document.getElementById('late-count').textContent = counts.late;
+            
+            document.getElementById('current-input').value = counts.current;
+            document.getElementById('absent-input').value = counts.absent;
+            document.getElementById('new-input').value = counts.new;
+            document.getElementById('checkout-input').value = counts.checkout;
+            document.getElementById('move-out-input').value = counts.moveOut;
+            document.getElementById('move-in-input').value = counts.moveIn;
+            document.getElementById('late-input').value = counts.late;
+        }
+
+        async function submitReport() {
+            const manager = document.getElementById('manager-select').value;
+            const building = document.getElementById('building-select').value;
+            const floor = document.getElementById('floor-select').value;
+            
+            if (!manager || !building || !floor) {
+                showMessage('담당자, 동, 층을 모두 선택해주세요.', 'warning');
+                return;
+            }
+            
+            const reportData = {
+                manager,
+                building,
+                floor,
+                current: parseInt(document.getElementById('current-input').value) || 0,
+                absent: parseInt(document.getElementById('absent-input').value) || 0,
+                new: parseInt(document.getElementById('new-input').value) || 0,
+                checkout: parseInt(document.getElementById('checkout-input').value) || 0,
+                moveOut: parseInt(document.getElementById('move-out-input').value) || 0,
+                moveIn: parseInt(document.getElementById('move-in-input').value) || 0,
+                late: parseInt(document.getElementById('late-input').value) || 0,
+                timestamp: new Date().toISOString(),
+                manualEntries
+            };
+            
+            try {
+                await sendToJandi(reportData);
+                showMessage('보고서가 성공적으로 전송되었습니다!', 'success');
+            } catch (error) {
+                showMessage('전송 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        async function sendToJandi(data) {
+            let message = `🏢 **기숙사 인원 보고**\n\n`;
+            message += `👤 **담당자**: ${data.manager}\n`;
+            message += `🏢 **위치**: ${data.building}동 ${data.floor}층\n`;
+            message += `📅 **보고시간**: ${new Date(data.timestamp).toLocaleString('ko-KR')}\n\n`;
+            message += `📊 **인원 현황**\n`;
+            message += `• 현재원: ${data.current}명\n`;
+            message += `• 외박: ${data.absent}명\n`;
+            message += `• 신규: ${data.new}명\n`;
+            message += `• 퇴소: ${data.checkout}명\n`;
+            message += `• 이동-: ${data.moveOut}명\n`;
+            message += `• 이동+: ${data.moveIn}명\n`;
+            message += `• 등미: ${data.late}명\n\n`;
+            
+            if (data.manualEntries.length > 0) {
+                message += `**수동 입력 학생 명단**\n`;
+                data.manualEntries.forEach(entry => {
+                    message += `• ${entry.room} ${entry.name} (${entry.status})`;
+                    if (entry.note) message += ` - ${entry.note}`;
+                    message += `\n`;
+                });
+            }
+            
+            const payload = {
+                body: message,
+                connectColor: '#667eea'
+            };
+            
+            await fetch('https://wh.jandi.com/connect-api/webhook/29522216/3d9603c3b428b386c0d640758e236cb4', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        }
+
+        function loadData() {
+            showMessage('데이터를 새로고침했습니다.', 'success');
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+            document.body.appendChild(messageDiv);
+            
+            setTimeout(() => messageDiv.remove(), 3000);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputs = document.querySelectorAll('.status-card input');
+            inputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    const countElement = this.parentElement.querySelector('.count');
+                    countElement.textContent = this.value || '0';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
