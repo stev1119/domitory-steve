@@ -514,6 +514,9 @@
     <div class="notification" id="notification"></div>
 
     <script>
+        // 구글 앱스 스크립트 웹 앱 URL
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx7fBeErshUP77YJy6VJMozB9rQ3wEFZwGLl-plazm8PV3GOvc8314Ddbd7-Lv-_aSk4w/exec';
+        
         // 기숙사 구조 정의 (3자리 호실번호)
         const dormitoryStructure = {
             A: {
@@ -599,41 +602,111 @@
         }
 
         async function loadFromGoogleSheets(building, floor) {
-            // 실제 환경에서는 Google Sheets API를 사용하여 데이터를 가져옵니다
-            // 여기서는 시뮬레이션 데이터를 생성합니다
-            
-            const structure = dormitoryStructure[building][floor];
-            const students = [];
-            
-            for (let roomNum = structure.start; roomNum <= structure.end; roomNum++) {
-                const roomNumber = `${building}${roomNum}`; // 3자리 형식: A101, B213 등
+            try {
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getStudentData&building=${building}&floor=${floor}`);
+                const data = await response.json();
                 
-                // 시뮬레이션: 80% 확률로 학생이 배정되어 있음
-                if (Math.random() > 0.2) {
-                    const isTripleRoom = floor === '4';
-                    const studentCount = isTripleRoom ? Math.floor(Math.random() * 3) + 1 : 1;
+                if (data.success) {
+                    return data.data;
+                } else {
+                    throw new Error(data.error || '데이터를 불러올 수 없습니다.');
+                }
+            } catch (error) {
+                console.error('구글 시트 데이터 로드 오류:', error);
+                
+                // 오류 시 시뮬레이션 데이터 반환 (개발/테스트용)
+                const structure = dormitoryStructure[building][floor];
+                const students = [];
+                
+                for (let roomNum = structure.start; roomNum <= structure.end; roomNum++) {
+                    const roomNumber = `${building}${roomNum}`; // 3자리 형식: A101, B213 등
                     
-                    for (let i = 0; i < studentCount; i++) {
+                    // 시뮬레이션: 80% 확률로 학생이 배정되어 있음
+                    if (Math.random() > 0.2) {
+                        const isTripleRoom = floor === '4';
+                        const studentCount = isTripleRoom ? Math.floor(Math.random() * 3) + 1 : 1;
+                        
+                        for (let i = 0; i < studentCount; i++) {
+                            students.push({
+                                roomNumber: roomNumber,
+                                name: generateRandomName(),
+                                status: getRandomStatus(),
+                                memo: '',
+                                studentInfo: generateStudentInfo()
+                            });
+                        }
+                    } else {
                         students.push({
                             roomNumber: roomNumber,
-                            name: generateRandomName(),
-                            status: getRandomStatus(),
+                            name: '미배정',
+                            status: '정상',
                             memo: '',
-                            studentInfo: generateStudentInfo()
+                            studentInfo: null
                         });
                     }
-                } else {
-                    students.push({
-                        roomNumber: roomNumber,
-                        name: '미배정',
-                        status: '정상',
-                        memo: '',
-                        studentInfo: null
-                    });
                 }
+                
+                return students;
             }
-            
-            return students;
+        }
+
+        async function updateGoogleSheet(student) {
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        action: 'updateStudentStatus',
+                        data: JSON.stringify({
+                            rowIndex: student.rowIndex,
+                            status: student.status,
+                            memo: student.memo
+                        })
+                    })
+                });
+                
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || '업데이트 실패');
+                }
+                
+                console.log('구글 시트 업데이트 성공:', student);
+            } catch (error) {
+                console.error('구글 시트 업데이트 오류:', error);
+                // 시뮬레이션: API 호출 지연
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+        
+        async function updateAllStudentsToGoogleSheet() {
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        action: 'updateBulkStudents',
+                        data: JSON.stringify({
+                            students: currentStudentData.filter(s => s.name !== '미배정')
+                        })
+                    })
+                });
+                
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || '일괄 업데이트 실패');
+                }
+                
+                console.log('일괄 업데이트 성공');
+            } catch (error) {
+                console.error('일괄 업데이트 오류:', error);
+                // 개별 업데이트로 fallback
+                const promises = currentStudentData.map(student => updateGoogleSheet(student));
+                await Promise.all(promises);
+            }
         }
 
         function generateRandomName() {
@@ -965,18 +1038,119 @@
             }
         }
         
-        async function updateGoogleSheet(student) {
-            // 실제 환경에서는 Google Sheets API를 사용하여 업데이트
-            console.log('구글 시트 업데이트:', student);
-            
-            // 시뮬레이션: API 호출 지연
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        
-        async function updateAllStudentsToGoogleSheet() {
-            // 모든 학생 데이터를 구글 시트에 일괄 업데이트
-            const promises = currentStudentData.map(student => updateGoogleSheet(student));
-            await Promise.all(promises);
+        async function sendToJandi(reportData) {
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        action: 'submitReport',
+                        data: JSON.stringify(reportData)
+                    })
+                });
+                
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || '보고 전송 실패');
+                }
+                
+                console.log('잔디 전송 성공');
+            } catch (error) {
+                console.error('잔디 전송 오류:', error);
+                
+                // Fallback: 직접 잔디 웹훅 호출 시도
+                const webhookUrl = 'https://wh.jandi.com/connect-api/webhook/29522216/3d9603c3b428b386c0d640758e236cb4';
+                
+                let message = `🏠 **기숙사 인원보고** ${reportData.isModification ? '(수정보고)' : ''}\n\n`;
+                message += `👤 **담당자**: ${reportData.manager}\n`;
+                message += `🏢 **구역**: ${reportData.building}동 ${reportData.floor}층\n`;
+                message += `📅 **보고시간**: ${new Date(reportData.timestamp).toLocaleString('ko-KR')}\n\n`;
+                
+                message += `📊 **현황**\n`;
+                message += `• 현재원: ${reportData.stats.current}명\n`;
+                message += `• 외박: ${reportData.stats.overnight}명\n`;
+                message += `• 퇴소: ${reportData.stats.checkout}명\n`;
+                message += `• 신규: ${reportData.stats.new}명\n`;
+                message += `• 이동-: ${reportData.stats.moveMinus}명\n`;
+                message += `• 이동+: ${reportData.stats.movePlus}명\n`;
+                message += `• 등미: ${reportData.stats.late}명\n`;
+                message += `• 기타: ${reportData.stats.other}명\n\n`;
+                
+                // 특별 케이스 상세 정보
+                if (reportData.specialCases.overnight.length > 0) {
+                    message += `🌙 **외박 학생**\n`;
+                    reportData.specialCases.overnight.forEach(student => {
+                        message += `• ${student.roomNumber} ${student.name} ${student.memo ? `(${student.memo})` : ''}\n`;
+                    });
+                    message += '\n';
+                }
+                
+                if (reportData.specialCases.new.length > 0) {
+                    message += `🆕 **신규 학생**\n`;
+                    reportData.specialCases.new.forEach(student => {
+                        message += `• ${student.roomNumber} ${student.name} ${student.memo ? `(${student.memo})` : ''}\n`;
+                    });
+                    message += '\n';
+                }
+                
+                if (reportData.specialCases.checkout.length > 0) {
+                    message += `📤 **퇴소 학생**\n`;
+                    reportData.specialCases.checkout.forEach(student => {
+                        message += `• ${student.roomNumber} ${student.name} ${student.memo ? `(${student.memo})` : ''}\n`;
+                    });
+                    message += '\n';
+                }
+                
+                if (reportData.specialCases.moveMinus.length > 0) {
+                    message += `↩️ **이동- 학생**\n`;
+                    reportData.specialCases.moveMinus.forEach(student => {
+                        message += `• ${student.roomNumber} ${student.name} ${student.memo ? `(${student.memo})` : ''}\n`;
+                    });
+                    message += '\n';
+                }
+                
+                if (reportData.specialCases.movePlus.length > 0) {
+                    message += `↪️ **이동+ 학생**\n`;
+                    reportData.specialCases.movePlus.forEach(student => {
+                        message += `• ${student.roomNumber} ${student.name} ${student.memo ? `(${student.memo})` : ''}\n`;
+                    });
+                    message += '\n';
+                }
+                
+                if (reportData.specialCases.late.length > 0) {
+                    message += `⏰ **등미 학생**\n`;
+                    reportData.specialCases.late.forEach(student => {
+                        message += `• ${student.roomNumber} ${student.name} ${student.memo ? `(${student.memo})` : ''}\n`;
+                    });
+                    message += '\n';
+                }
+                
+                const payload = {
+                    body: message,
+                    connectColor: reportData.isModification ? "#fbbf24" : "#10b981"
+                };
+                
+                try {
+                    const fallbackResponse = await fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!fallbackResponse.ok) {
+                        throw new Error('Fallback 잔디 전송도 실패');
+                    }
+                    
+                    console.log('Fallback 잔디 전송 성공');
+                } catch (fallbackError) {
+                    console.error('Fallback 잔디 전송도 실패:', fallbackError);
+                    throw new Error('잔디 전송 완전 실패');
+                }
+            }
         }
         
         function showNotification(message, type = 'success') {
@@ -1030,4 +1204,5 @@
         });
     </script>
 </body>
+</html>
 </html>
