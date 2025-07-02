@@ -577,7 +577,13 @@
                 calculateStats();
                 
             } catch (error) {
-                console.error('Error loading student data:', error);
+                console.error('Error submitting report:', error);
+                showAlert('보고서 제출 중 오류가 발생했습니다: ' + error.message, 'error');
+            } finally {
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').innerHTML = '<i class="fas fa-paper-plane"></i> 인원보고 제출';
+            }
+        }('Error loading student data:', error);
                 showAlert('데이터를 불러오는 중 오류가 발생했습니다: ' + error.message, 'error');
             } finally {
                 showLoading(false);
