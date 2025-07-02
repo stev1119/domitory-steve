@@ -511,7 +511,7 @@
 
     <script>
         // 구글 Apps Script URL (배포 후 실제 URL로 변경해야 함)
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw8YX4wRBwoFwDBiTpbl9eene7WGDJNH82krTS_dFRaa2S09IhOt6BfpU-CEz3iqYw91w/exec';
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz_yLduPSj4niDB8pye-Cm8v6NHyAh_BaacpVkuwNR7KqIK1ReOffGRIgCmeckT16sIUg/exec';
         
         let currentStudents = [];
         let lastReportData = {};
@@ -532,32 +532,67 @@
             lastReportData = savedData;
         }
 
-        // 학생 데이터 로드
+        // 학생 데이터 로드 (속도 개선)
         async function loadStudentData() {
             const building = document.getElementById('building').value;
             const floor = document.getElementById('floor').value;
 
             if (!building || !floor) {
                 document.getElementById('studentsGrid').innerHTML = '';
+                resetStats();
                 return;
             }
 
             showLoading(true);
 
             try {
+                // 캐시 확인
+                const cacheKey = `students_${building}_${floor}`;
+                const cached = sessionStorage.getItem(cacheKey);
+                const cacheTime = sessionStorage.getItem(cacheKey + '_time');
+                
+                // 5분 이내 캐시가 있으면 사용
+                if (cached && cacheTime && (Date.now() - parseInt(cacheTime)) < 300000) {
+                    currentStudents = JSON.parse(cached);
+                    displayStudents(currentStudents);
+                    calculateStats();
+                    showLoading(false);
+                    return;
+                }
+
                 const response = await fetch(`${APPS_SCRIPT_URL}?action=getStudentData&building=${building}&floor=${floor}`);
                 const students = await response.json();
                 
+                if (students.error) {
+                    throw new Error(students.error);
+                }
+                
                 currentStudents = students;
+                
+                // 캐시 저장
+                sessionStorage.setItem(cacheKey, JSON.stringify(students));
+                sessionStorage.setItem(cacheKey + '_time', Date.now().toString());
+                
                 displayStudents(students);
                 calculateStats();
                 
             } catch (error) {
                 console.error('Error loading student data:', error);
-                showAlert('데이터를 불러오는 중 오류가 발생했습니다.', 'error');
+                showAlert('데이터를 불러오는 중 오류가 발생했습니다: ' + error.message, 'error');
             } finally {
                 showLoading(false);
             }
+        }
+
+        // 통계 리셋
+        function resetStats() {
+            const inputs = ['currentCount', 'checkoutCount', 'newCount', 'outingCount', 
+                           'moveOutCount', 'moveInCount', 'absentCount', 'otherCount'];
+            inputs.forEach(id => {
+                const input = document.getElementById(id);
+                input.value = 0;
+                input.dataset.manual = '';
+            });
         }
 
         // 학생 목록 표시
@@ -609,7 +644,7 @@
             }
         }
 
-        // 통계 계산
+        // 통계 계산 (수정된 로직)
         function calculateStats() {
             let current = 0, checkout = 0, newCount = 0, outing = 0;
             let moveOut = 0, moveIn = 0, absent = 0, other = 0;
@@ -618,43 +653,62 @@
                 if (student.name === '미배정') return;
 
                 switch (student.status) {
-                    case '정상':
                     case '신규':
+                        newCount++;
+                        current++; // 신규는 현재원에 포함
+                        break;
                     case '이동+':
-                        current++;
-                        if (student.status === '신규') newCount++;
-                        if (student.status === '이동+') moveIn++;
+                        moveIn++;
+                        current++; // 이동+는 현재원에 포함
                         break;
                     case '외박':
                         outing++;
+                        // 외박은 현재원에서 제외
                         break;
                     case '퇴소':
                         checkout++;
+                        // 퇴소는 현재원에서 제외
                         break;
                     case '이동-':
                         moveOut++;
+                        // 이동-는 현재원에서 제외
                         break;
                     case '등미':
                         absent++;
+                        // 등미는 현재원에서 제외
                         break;
                     case '기타':
                         other++;
+                        // 기타는 현재원에서 제외
+                        break;
+                    case '정상':
+                    default:
+                        // 정상은 현재원에서 제외 (요구사항에 따라)
                         break;
                 }
             });
 
-            // 카드 업데이트
-            document.getElementById('currentCount').value = current;
-            document.getElementById('checkoutCount').value = checkout;
-            document.getElementById('newCount').value = newCount;
-            document.getElementById('outingCount').value = outing;
-            document.getElementById('moveOutCount').value = moveOut;
-            document.getElementById('moveInCount').value = moveIn;
-            document.getElementById('absentCount').value = absent;
-            document.getElementById('otherCount').value = other;
+            // 수동 입력 체크하여 자동 계산된 값만 업데이트
+            const inputs = {
+                'currentCount': current,
+                'checkoutCount': checkout,
+                'newCount': newCount,
+                'outingCount': outing,
+                'moveOutCount': moveOut,
+                'moveInCount': moveIn,
+                'absentCount': absent,
+                'otherCount': other
+            };
+
+            Object.keys(inputs).forEach(id => {
+                const input = document.getElementById(id);
+                if (!input.dataset.manual) {
+                    input.value = inputs[id];
+                }
+            });
         }
 
-        // 보고서 제출
+        // 보고서 제출 (에러 처리 개선)
         async function submitReport() {
             const manager = document.getElementById('manager').value;
             const building = document.getElementById('building').value;
@@ -720,7 +774,9 @@
                     memo: s.memo
                 }));
 
-                await fetch(APPS_SCRIPT_URL, {
+                console.log('Sending updates:', updates);
+
+                const updateResponse = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -731,8 +787,17 @@
                     })
                 });
 
+                const updateResult = await updateResponse.json();
+                console.log('Update result:', updateResult);
+
+                if (!updateResult.success) {
+                    throw new Error('구글 시트 업데이트 실패: ' + (updateResult.error || 'Unknown error'));
+                }
+
                 // 잔디 웹훅 전송
-                await fetch(APPS_SCRIPT_URL, {
+                console.log('Sending report:', reportData);
+
+                const reportResponse = await fetch(APPS_SCRIPT_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -743,14 +808,32 @@
                     })
                 });
 
+                const reportResult = await reportResponse.json();
+                console.log('Report result:', reportResult);
+
+                if (!reportResult.success) {
+                    throw new Error('잔디 전송 실패: ' + (reportResult.error || 'Unknown error'));
+                }
+
                 // 로컬스토리지에 저장
                 lastReportData[reportKey] = reportData;
                 localStorage.setItem('reportData_' + today.toDateString(), JSON.stringify(lastReportData));
+
+                // 캐시 클리어
+                const cacheKey = `students_${building}_${floor}`;
+                sessionStorage.removeItem(cacheKey);
+                sessionStorage.removeItem(cacheKey + '_time');
 
                 showAlert('인원보고가 성공적으로 제출되었습니다.', 'success');
 
             } catch (error) {
                 console.error('Error submitting report:', error);
+                showAlert('보고서 제출 중 오류가 발생했습니다: ' + error.message, 'error');
+            } finally {
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').innerHTML = '<i class="fas fa-paper-plane"></i> 인원보고 제출';
+            }
+        }('Error submitting report:', error);
                 showAlert('보고서 제출 중 오류가 발생했습니다.', 'error');
             } finally {
                 document.getElementById('submitBtn').disabled = false;
