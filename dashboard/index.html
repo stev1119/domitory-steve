@@ -668,7 +668,7 @@
 
     <script>
         // 구글 Apps Script URL (배포 후 실제 URL로 변경해야 함)
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw8YX4wRBwoFwDBiTpbl9eene7WGDJNH82krTS_dFRaa2S09IhOt6BfpU-CEz3iqYw91w/exec';
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz_yLduPSj4niDB8pye-Cm8v6NHyAh_BaacpVkuwNR7KqIK1ReOffGRIgCmeckT16sIUg/exec';
         
         let allStudents = [];
         let reportData = {};
@@ -762,7 +762,7 @@
             searchResults.style.display = 'block';
         }
 
-        // 통계 계산 및 표시
+        // 통계 계산 및 표시 (수정된 로직)
         function calculateAndDisplayStats() {
             const stats = {
                 total: { current: 0, outing: 0, new: 0, checkout: 0, moveOut: 0, moveIn: 0, absent: 0, other: 0 },
@@ -777,41 +777,46 @@
                 const genderKey = gender === 'male' ? 'male' : 'female';
 
                 switch (student.status) {
-                    case '정상':
-                        stats.total.current++;
-                        stats[genderKey].current++;
-                        break;
                     case '신규':
-                        stats.total.current++;
                         stats.total.new++;
-                        stats[genderKey].current++;
+                        stats.total.current++; // 신규는 현재원에 포함
                         stats[genderKey].new++;
+                        stats[genderKey].current++;
                         break;
                     case '이동+':
-                        stats.total.current++;
                         stats.total.moveIn++;
-                        stats[genderKey].current++;
+                        stats.total.current++; // 이동+는 현재원에 포함
                         stats[genderKey].moveIn++;
+                        stats[genderKey].current++;
                         break;
                     case '외박':
                         stats.total.outing++;
                         stats[genderKey].outing++;
+                        // 외박은 현재원에서 제외
                         break;
                     case '퇴소':
                         stats.total.checkout++;
                         stats[genderKey].checkout++;
+                        // 퇴소는 현재원에서 제외
                         break;
                     case '이동-':
                         stats.total.moveOut++;
                         stats[genderKey].moveOut++;
+                        // 이동-는 현재원에서 제외
                         break;
                     case '등미':
                         stats.total.absent++;
                         stats[genderKey].absent++;
+                        // 등미는 현재원에서 제외
                         break;
                     case '기타':
                         stats.total.other++;
                         stats[genderKey].other++;
+                        // 기타는 현재원에서 제외
+                        break;
+                    case '정상':
+                    default:
+                        // 정상은 현재원에서 제외 (요구사항에 따라)
                         break;
                 }
             });
@@ -921,11 +926,11 @@
             showStudentsModal(title, filteredStudents);
         }
 
-        // 상태 매칭
+        // 상태 매칭 (수정된 로직)
         function matchesStatus(studentStatus, targetStatus) {
             switch (targetStatus) {
                 case 'current':
-                    return ['정상', '신규', '이동+'].includes(studentStatus);
+                    return ['신규', '이동+'].includes(studentStatus); // 신규와 이동+만 현재원
                 case 'outing':
                     return studentStatus === '외박';
                 case 'new':
