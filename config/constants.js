@@ -131,7 +131,7 @@ const DORMITORY_CONFIG = {
 // config/config.example.js - 설정 파일 예시
 const CONFIG = {
     // 구글 앱스 스크립트 웹앱 URL (실제 URL로 변경 필요)
-    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbz_yLduPSj4niDB8pye-Cm8v6NHyAh_BaacpVkuwNR7KqIK1ReOffGRIgCmeckT16sIUg/exec',
+    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbw8YX4wRBwoFwDBiTpbl9eene7WGDJNH82krTS_dFRaa2S09IhOt6BfpU-CEz3iqYw91w/exec',
     
     // 구글 시트 ID
     GOOGLE_SHEETS_ID: '1RqPfs1VbguAP85a9uswfLeUdYVAGye6GIKr0tvg4oYc',
